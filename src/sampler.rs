@@ -120,6 +120,53 @@ impl<'a> Sampler<'a> {
         }
     }
 
+    /// Pack a full-res patch plus its own pooled conditioning, replicated
+    /// back to full resolution: FULL_CHANNELS + COARSE_CHANNELS channels.
+    /// The crop must be POOL-aligned so the pooling grid matches the fixed
+    /// /POOL grid that stage 1 generates on.
+    pub fn pack_pair(&self, crop: &Crop, size: usize, out: &mut [f32]) {
+        assert_eq!(crop.x % POOL, 0);
+        assert_eq!(crop.y % POOL, 0);
+        assert_eq!(size % POOL, 0);
+        let plane = size * size;
+        assert_eq!(out.len(), (FULL_CHANNELS + COARSE_CHANNELS) * plane);
+        self.pack_full(crop, size, &mut out[..FULL_CHANNELS * plane]);
+
+        let csize = size / POOL;
+        let mut coarse = vec![0.0; COARSE_CHANNELS * csize * csize];
+        self.pack_coarse(crop, csize, &mut coarse);
+        for c in 0..COARSE_CHANNELS {
+            for dy in 0..size {
+                for dx in 0..size {
+                    out[(FULL_CHANNELS + c) * plane + dy * size + dx] =
+                        coarse[c * csize * csize + (dy / POOL) * csize + dx / POOL];
+                }
+            }
+        }
+    }
+
+    /// Fill a batch of paired (full + replicated coarse) samples with
+    /// POOL-aligned crop origins. Returns world-index labels.
+    pub fn fill_batch_pair(
+        &self,
+        rng: &mut impl Rng,
+        batch: usize,
+        size: usize,
+        out: &mut Vec<f32>,
+        labels: &mut Vec<u32>,
+    ) {
+        let sample = (FULL_CHANNELS + COARSE_CHANNELS) * size * size;
+        out.resize(batch * sample, 0.0);
+        labels.clear();
+        for i in 0..batch {
+            let mut crop = self.sample_crop(rng);
+            crop.x &= !(POOL - 1);
+            crop.y &= !(POOL - 1);
+            self.pack_pair(&crop, size, &mut out[i * sample..(i + 1) * sample]);
+            labels.push(crop.world as u32);
+        }
+    }
+
     /// Fill a training batch: returns world-index labels per sample.
     pub fn fill_batch(
         &self,

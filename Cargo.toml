@@ -6,7 +6,10 @@ publish = false
 
 [dependencies]
 vangers = { path = "../vange-rs" }
+meganeura = { path = "../meganeura" }
 rand = "0.8"
+rand_distr = "0.4"
+env_logger = "0.11"
 
 [profile.release]
 debug = true
