@@ -1,0 +1,12 @@
+[package]
+name = "van-world"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+vangers = { path = "../vange-rs" }
+rand = "0.8"
+
+[profile.release]
+debug = true
