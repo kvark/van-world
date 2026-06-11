@@ -1,18 +1,12 @@
-//! Train the stage-2 super-resolution diffusion U-Net.
-//!
-//! Each sample is a POOL-aligned full-res crop (10 data channels) paired
-//! with its own pooled conditioning (4 channels, replicated to full res).
-//! The model learns v-prediction denoising of the data channels given the
-//! conditioning channels, a timestep embedding, and a world-style class
-//! (dropped to the null class for CFG).
+//! Train the stage-1 structure diffusion U-Net: unconditional-in-space
+//! generation of /8-pooled coarse worlds (4 channels) with world-style
+//! class conditioning.
 
 use std::path::PathBuf;
 
 use meganeura::Graph;
-use rand::Rng;
-use rand_distr::StandardNormal;
 use van_world::model::{self, UNetConfig};
-use van_world::sampler::{COARSE_CHANNELS, FULL_CHANNELS, Sampler};
+use van_world::sampler::{COARSE_CHANNELS, Sampler};
 use van_world::training::{self, TrainOpts};
 use van_world::world::load_all;
 
@@ -22,6 +16,7 @@ struct Args {
     batch: u32,
     resolution: u32,
     base_channels: u32,
+    num_levels: usize,
 }
 
 impl Args {
@@ -29,16 +24,17 @@ impl Args {
         let mut args = Args {
             thechain: "/x/Work/VangersData/thechain".into(),
             opts: TrainOpts {
-                out_dir: "checkpoints/sr".into(),
+                out_dir: "checkpoints/struct".into(),
                 resume: None,
                 steps: 100_000,
                 lr: 1e-4,
                 save_every: 2000,
-                seed: 1,
+                seed: 2,
             },
             batch: 4,
-            resolution: 128,
+            resolution: 256,
             base_channels: 64,
+            num_levels: 4,
         };
         let mut it = std::env::args().skip(1);
         while let Some(flag) = it.next() {
@@ -50,6 +46,7 @@ impl Args {
                 "--batch" => args.batch = val().parse().unwrap(),
                 "--res" => args.resolution = val().parse().unwrap(),
                 "--base" => args.base_channels = val().parse().unwrap(),
+                "--levels" => args.num_levels = val().parse().unwrap(),
                 "--steps" => args.opts.steps = val().parse().unwrap(),
                 "--lr" => args.opts.lr = val().parse().unwrap(),
                 "--save-every" => args.opts.save_every = val().parse().unwrap(),
@@ -71,35 +68,36 @@ fn main() {
 
     let cfg = UNetConfig {
         batch: args.batch,
+        data_channels: COARSE_CHANNELS as u32,
+        cond_channels: 0,
         base_channels: args.base_channels,
+        num_levels: args.num_levels,
         ..UNetConfig::sr_default(args.batch, args.resolution)
     };
     let res = args.resolution as usize;
-    let plane = res * res;
-    let data_size = FULL_CHANNELS * plane;
-    let pair_size = (FULL_CHANNELS + COARSE_CHANNELS) * plane;
+    let data_size = COARSE_CHANNELS * res * res;
 
     let mut g = Graph::new();
     let (loss, inits) = model::build_training_graph(&mut g, &cfg);
     g.set_outputs(vec![loss]);
 
-    let mut pairs = Vec::new();
+    let mut clean = Vec::new();
     let mut labels = Vec::new();
     let batch = args.batch as usize;
     let t_dim = cfg.t_dim;
     training::run(&g, &cfg, &inits, &args.opts, |rng, inp| {
-        sampler.fill_batch_pair(rng, batch, res, &mut pairs, &mut labels);
+        sampler.fill_batch(rng, batch, res, true, &mut clean, &mut labels);
         for b in 0..batch {
-            let src = &pairs[b * pair_size..(b + 1) * pair_size];
-            training::noise_sample(rng, inp, b, &src[..data_size], data_size, pair_size, t_dim, labels[b]);
-            // Conditioning channels pass through clean, with mild noise
-            // augmentation to match imperfect stage-1 outputs at inference.
-            let aug = rng.gen_range(0.0..0.1);
-            let dst = &mut inp.x[b * pair_size..(b + 1) * pair_size];
-            for i in data_size..pair_size {
-                let eps: f32 = rng.sample(StandardNormal);
-                dst[i] = src[i] + aug * eps;
-            }
+            training::noise_sample(
+                rng,
+                inp,
+                b,
+                &clean[b * data_size..(b + 1) * data_size],
+                data_size,
+                data_size,
+                t_dim,
+                labels[b],
+            );
         }
     });
 }
