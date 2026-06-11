@@ -25,6 +25,9 @@ pub struct TrainOpts {
     pub lr: f32,
     pub save_every: u64,
     pub seed: u64,
+    /// GPU duty cycle in (0, 1]: after each step, sleep for
+    /// step_time * (1 - duty) / duty. 1.0 = no throttling.
+    pub duty: f32,
 }
 
 /// Per-step model inputs filled by the stage-specific closure.
@@ -153,6 +156,7 @@ pub fn run(
     let mut loss_n = 0u64;
     let t_train = std::time::Instant::now();
 
+    assert!(opts.duty > 0.0 && opts.duty <= 1.0);
     for step in start_step..opts.steps {
         fill(&mut rng, &mut inp);
 
@@ -160,7 +164,13 @@ pub fn run(
         session.set_input("t_emb", &inp.t_emb);
         session.set_input_u32("class", &inp.classes);
         session.set_input("v_target", &inp.v_target);
+        let t_step = std::time::Instant::now();
         session.step();
+        if opts.duty < 1.0 {
+            session.wait();
+            let busy = t_step.elapsed();
+            std::thread::sleep(busy.mul_f32((1.0 - opts.duty) / opts.duty));
+        }
 
         if (step + 1) % EMA_EVERY == 0 {
             session.wait();

@@ -35,6 +35,7 @@ impl Args {
                 lr: 1e-4,
                 save_every: 2000,
                 seed: 1,
+                duty: 1.0,
             },
             batch: 4,
             resolution: 128,
@@ -54,6 +55,7 @@ impl Args {
                 "--lr" => args.opts.lr = val().parse().unwrap(),
                 "--save-every" => args.opts.save_every = val().parse().unwrap(),
                 "--seed" => args.opts.seed = val().parse().unwrap(),
+                "--duty" => args.opts.duty = val().parse().unwrap(),
                 other => panic!("unknown flag {other}"),
             }
         }

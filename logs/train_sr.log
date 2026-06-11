@@ -5,3 +5,21 @@ compiled in 0.3s, GPU memory: 386 buffers, 1907.9 MB total (45.6 MB adam state),
 initialized 5700992 parameters (22.8 MB)
 step     500  loss 0.69506  (2.64 steps/s)
 step    1000  loss 0.80003  (2.65 steps/s)
+step    1500  loss 0.78261  (2.65 steps/s)
+step    2000  loss 0.75876  (2.64 steps/s)
+checkpoint saved at step 2000
+step    2500  loss 0.78950  (2.63 steps/s)
+step    3000  loss 0.79818  (2.62 steps/s)
+step    3500  loss 0.76630  (2.64 steps/s)
+step    4000  loss 0.78960  (2.65 steps/s)
+checkpoint saved at step 4000
+step    4500  loss 0.76323  (2.63 steps/s)
+step    5000  loss 0.73106  (2.62 steps/s)
+step    5500  loss 0.71111  (2.61 steps/s)
+step    6000  loss 0.78050  (2.63 steps/s)
+checkpoint saved at step 6000
+step    6500  loss 0.79797  (2.62 steps/s)
+step    7000  loss 0.78270  (2.53 steps/s)
+step    7500  loss 0.82304  (2.51 steps/s)
+step    8000  loss 0.80082  (2.50 steps/s)
+checkpoint saved at step 8000
