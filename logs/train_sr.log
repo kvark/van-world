@@ -23,3 +23,13 @@ step    7000  loss 0.78270  (2.53 steps/s)
 step    7500  loss 0.82304  (2.51 steps/s)
 step    8000  loss 0.80082  (2.50 steps/s)
 checkpoint saved at step 8000
+step    8500  loss 0.79211  (2.49 steps/s)
+step    9000  loss 0.77181  (2.49 steps/s)
+step    9500  loss 0.76001  (2.50 steps/s)
+step   10000  loss 0.77952  (2.50 steps/s)
+checkpoint saved at step 10000
+step   10500  loss 0.69131  (2.44 steps/s)
+step   11000  loss 0.52888  (2.40 steps/s)
+in 0.9s, GPU memory: 386 buffers, 1907.9 MB total (45.6 MB adam state), largest 50.3 MB
+resumed from checkpoints/sr/latest.bin at step 10000
+step   10500  loss 0.58929  (0.83 steps/s)

@@ -22,6 +22,7 @@ struct Args {
     batch: u32,
     resolution: u32,
     base_channels: u32,
+    overfit: bool,
 }
 
 impl Args {
@@ -40,6 +41,7 @@ impl Args {
             batch: 4,
             resolution: 128,
             base_channels: 64,
+            overfit: false,
         };
         let mut it = std::env::args().skip(1);
         while let Some(flag) = it.next() {
@@ -56,6 +58,7 @@ impl Args {
                 "--save-every" => args.opts.save_every = val().parse().unwrap(),
                 "--seed" => args.opts.seed = val().parse().unwrap(),
                 "--duty" => args.opts.duty = val().parse().unwrap(),
+                "--overfit" => args.overfit = true,
                 other => panic!("unknown flag {other}"),
             }
         }
@@ -89,7 +92,12 @@ fn main() {
     let mut labels = Vec::new();
     let batch = args.batch as usize;
     let t_dim = cfg.t_dim;
+    let mut filled = false;
     training::run(&g, &cfg, &inits, &args.opts, |rng, inp| {
+        if args.overfit && filled {
+            return; // keep every input identical: pure memorization test
+        }
+        filled = true;
         sampler.fill_batch_pair(rng, batch, res, &mut pairs, &mut labels);
         for b in 0..batch {
             let src = &pairs[b * pair_size..(b + 1) * pair_size];
